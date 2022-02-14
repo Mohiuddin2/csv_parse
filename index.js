@@ -1,29 +1,39 @@
 const express = require("express");
 const app = express();
+const connectDB = require("./config/db");
+const morgan = require('morgan')
+const dotenv = require("dotenv");
+const {engine} = require("express-handlebars");
 
-const csvFilePath = "kepler_data.csv";
-const csv = require("csvtojson");
+dotenv.config({ path: "./config/.env" });
+// Connect DB
+connectDB();
 
-let result = [];
+// Handlebars
+app.use(express.static(__dirname + '/public'))
 
-csv()
-  .fromFile(csvFilePath)
-  .then((jsonObj) => {
-    const multi = (x) =>
-      x["field4"] === "CONFIRMED" &&
-      x["field26"] < 1.6 &&
-      x["field32"] >= 0.36 &&
-      x["field32"] <= 1.11;
-    const db = jsonObj.filter(multi);
-    result.push(db);
-    console.log("jsonObd", db);
-  });
+app.set('view engine', 'hbs')
 
-  // Get Route for Showing Result
-app.get("/", (req, res) => {
-  res.send(result);
-});
+app.engine('hbs', engine({
+  extname: "hbs",
+  defaultLayout: 'index',
+  layoutDir: __dirname + '/views/layouts',
+  partialsDir: __dirname + '/views/partials',
+}))
 
+// Body Parser just in case
+app.use(express.json())
+//Mounting Router
+const assignment = require('./router/router')
+
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+// Mounting Routes
+app.use('/', assignment)
+
+
+const port = process.env.PORT || 5000
 app.listen(3000, () => {
-  console.log("Server is running on Port 5000");
+  console.log(`Server is running on Port ${port}`);
 });
